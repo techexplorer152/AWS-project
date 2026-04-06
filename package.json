@@ -1,0 +1,23 @@
+{
+  "name": "async-job-project",
+  "version": "1.0.0",
+  "description": "Async Job Processing Project with Node.js, TypeScript, SQS and Lambda",
+  "main": "dist/api/index.js",
+  "scripts": {
+    "dev": "ts-node-dev Backend/api/index.ts",
+    "build": "tsc",
+    "start": "node dist/api/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1024.0",
+    "aws-sdk": "^2.1482.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.19.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.3"
+  },
+  "private": true
+}
