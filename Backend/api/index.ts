@@ -1,78 +1,45 @@
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
 import path from "path";
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
-
+import { sendJob } from "./worker";
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const app = express();
 app.use(express.json());
 
-
-const region = process.env.AWS_REGION;
-const queueUrl = process.env.SQS_QUEUE_URL;
-const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-if (!region || !queueUrl || !accessKeyId || !secretAccessKey) {
-    throw new Error("Missing AWS configuration in .env");
-}
-
-
-const sqsClient = new SQSClient({
-    region,
-    credentials: {
-        accessKeyId,
-        secretAccessKey,
-    },
-});
-
 app.post("/task", async (req: Request, res: Response) => {
-    const { task }: { task?: string } = req.body;
+    const { task, payload } = req.body;
 
     if (!task) {
         return res.status(400).json({ error: "Task is required" });
     }
 
-
-    const jobId = `${task}-${Date.now()}`;
-
-    const messageBody = {
-        jobId,
-        type: task,
-        payload: req.body.payload || {},
-        createdAt: new Date().toISOString(),
-    };
-
-    console.log(JSON.stringify({
-        level: "INFO",
-        message: "Sending job to SQS",
-        jobId,
-        type: task,
-        timestamp: new Date().toISOString(),
-    }));
-
     try {
-        await sqsClient.send(
-            new SendMessageCommand({
-                QueueUrl: queueUrl,
-                MessageBody: JSON.stringify(messageBody),
-            })
-        );
+        const job = await sendJob(task, payload || {});
 
-        res.json({ message: "Task sent to queue successfully ", jobId });
+        console.log(JSON.stringify({
+            level: "INFO",
+            message: "Job dispatched to SQS",
+            jobId: job.jobId,
+            timestamp: job.createdAt
+        }));
+
+        res.status(202).json({
+            message: "Task accepted",
+            jobId: job.jobId
+        });
     } catch (error) {
-        console.error("SQS error:", error);
-        res.status(500).json({ error: "Failed to send task" });
+        console.error("Queue Error:", error);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 
-app.get("/", (_req: Request, res: Response) => {
-    res.send("API is running ");
+app.get("/health", (_req: Request, res: Response) => {
+    res.status(200).send("OK");
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Worker API online on port ${PORT}`);
 });

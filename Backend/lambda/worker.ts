@@ -1,13 +1,13 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 
-const client = new SQSClient({ region: "us-east-1" });
+const client = new SQSClient({ region: process.env.AWS_REGION || "us-east-1" });
 
 interface JobPayload {
     [key: string]: any;
 }
 
 interface Job {
-    jobId?: string;
+    jobId: string;
     type: string;
     payload: JobPayload;
     createdAt: string;
@@ -15,7 +15,7 @@ interface Job {
 
 export const sendJob = async (type: string, payload: JobPayload) => {
     const job: Job = {
-        jobId: Date.now().toString(),
+        jobId: `${type}-${Date.now()}`,
         type,
         payload,
         createdAt: new Date().toISOString(),
@@ -27,5 +27,5 @@ export const sendJob = async (type: string, payload: JobPayload) => {
     });
 
     await client.send(command);
-    console.log("Job sent:", job);
+    return job;
 };
